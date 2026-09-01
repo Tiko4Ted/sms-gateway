@@ -12,6 +12,9 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
+    env:
+      HAS_RELEASE_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      HAS_RELEASE_SIGNING: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
 
     steps:
       - name: Checkout Code
@@ -34,11 +37,31 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew assembleRelease
+      - name: Build debug APK for sideload testing
+        run: ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Decode release keystore
+        if: ${{ env.HAS_RELEASE_KEYSTORE == 'true' }}
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > app/release-key.jks
+
+      - name: Build signed release APK
+        if: ${{ env.HAS_RELEASE_SIGNING == 'true' }}
+        run: ./gradlew assembleRelease
+        env:
+          ANDROID_KEYSTORE_FILE: release-key.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          name: sms-gateway-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload signed release APK
+        if: ${{ hashFiles('app/build/outputs/apk/release/app-release.apk') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sms-gateway-release-apk
+          path: app/build/outputs/apk/release/app-release.apk

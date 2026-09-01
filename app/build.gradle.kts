@@ -4,6 +4,20 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+fun secret(name: String): String? =
+    (project.findProperty(name) as String?) ?: System.getenv(name)
+
+val releaseStoreFile = secret("ANDROID_KEYSTORE_FILE")
+val releaseStorePassword = secret("ANDROID_KEYSTORE_PASSWORD")
+val releaseKeyAlias = secret("ANDROID_KEY_ALIAS")
+val releaseKeyPassword = secret("ANDROID_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.tradenova.smsgateway"
     compileSdk = 34
@@ -21,9 +35,23 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
