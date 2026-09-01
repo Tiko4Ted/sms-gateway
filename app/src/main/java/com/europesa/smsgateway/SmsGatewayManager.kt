@@ -88,7 +88,7 @@ class SmsGatewayManager(private val context: Context) {
         const val EXTRA_PART_INDEX = "part_index"
         private val requestCodeCounter = AtomicInteger(0)
         private val syncLocks = ConcurrentHashMap<String, Mutex>()
-        const val DEFAULT_POLL_INTERVAL_SECONDS = 15
+        const val DEFAULT_POLL_INTERVAL_SECONDS = 5
     }
 
     suspend fun syncPendingJobs(connectionId: String? = null): Int {

@@ -23,7 +23,9 @@ class FcmPushReceiver : FirebaseMessagingService() {
         CoroutineScope(Dispatchers.IO).launch {
             val isActive = ConfigManager(applicationContext).isActiveFlow.firstOrNull() ?: false
             if (isActive) {
-                startForegroundService(Intent(applicationContext, GatewayService::class.java))
+                runCatching {
+                    startForegroundService(Intent(applicationContext, GatewayService::class.java))
+                }
             }
             SmsGatewayManager(applicationContext).syncPendingJobs(requestedConnection)
         }
