@@ -1,7 +1,8 @@
-package com.tradenova.smsgateway
+package com.europesa.smsgateway
 
 import android.content.Context
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -13,18 +14,16 @@ class SmsWorker(
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
-        val manager = SmsGatewayManager(applicationContext)
-        manager.syncPendingJobs()
+        SmsGatewayManager(applicationContext).syncPendingJobs()
         return Result.success()
     }
 
     companion object {
         fun enqueue(context: Context) {
-            val workRequest = PeriodicWorkRequestBuilder<SmsWorker>(15, TimeUnit.MINUTES)
-                .build()
+            val workRequest = PeriodicWorkRequestBuilder<SmsWorker>(15, TimeUnit.MINUTES).build()
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                "SmsWorkerSync",
-                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                "EuroPesaSmsGatewayFallbackSync",
+                ExistingPeriodicWorkPolicy.KEEP,
                 workRequest
             )
         }

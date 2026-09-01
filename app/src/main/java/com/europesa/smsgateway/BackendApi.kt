@@ -1,4 +1,4 @@
-package com.tradenova.smsgateway
+package com.europesa.smsgateway
 
 import retrofit2.Response
 import retrofit2.http.Body
@@ -12,7 +12,7 @@ data class PendingJobsResponse(
 )
 
 data class SmsJob(
-    val id: Long,
+    val id: String,
     val recipient: String,
     val message: String,
     val idempotency_key: String
@@ -25,7 +25,7 @@ data class StatusUpdateRequest(
 )
 
 data class JobResult(
-    val id: Long,
+    val id: String,
     val status: String, // "sent" or "failed"
     val error: String? = null,
     val sent_at: String? = null // ISO8601 string
@@ -40,6 +40,11 @@ data class DeviceHealth(
 data class RegisterTokenRequest(
     val device_id: String,
     val fcm_token: String
+)
+
+data class HealthResponse(
+    val ok: Boolean? = null,
+    val pending_count: Int? = null
 )
 
 interface BackendApi {
@@ -68,4 +73,11 @@ interface BackendApi {
         @Header("X-Timestamp") timestamp: Long,
         @Body request: RegisterTokenRequest
     ): Response<Unit>
+
+    @GET("/api/sms-gateway/health")
+    suspend fun health(
+        @Header("Authorization") auth: String,
+        @Header("X-Signature") signature: String,
+        @Header("X-Timestamp") timestamp: Long
+    ): Response<HealthResponse>
 }

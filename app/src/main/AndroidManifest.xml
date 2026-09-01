@@ -35,7 +35,7 @@
 
         <service
             android:name=".FcmPushReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
@@ -45,7 +45,7 @@
             android:name=".SmsDeliveryReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.tradenova.smsgateway.SMS_SENT_ACTION" />
+                <action android:name="com.europesa.smsgateway.SMS_SENT_ACTION" />
             </intent-filter>
         </receiver>
 

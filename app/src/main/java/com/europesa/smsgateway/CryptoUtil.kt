@@ -1,4 +1,4 @@
-package com.tradenova.smsgateway
+package com.europesa.smsgateway
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties

@@ -1,4 +1,4 @@
-# APK install notes
+# Euro Pesa SMS Gateway APK install notes
 
 The GitHub Actions artifact named `sms-gateway-debug-apk` contains `app-debug.apk`.
 That APK is signed with Android's debug key and can be sideloaded for testing.
@@ -16,6 +16,13 @@ For a production-style installable release APK, add these GitHub repository secr
 
 Then download the `sms-gateway-release-apk` artifact and install `app-release.apk`.
 
+Firebase must be configured for Android package `com.europesa.smsgateway`.
+The APK display name is `Euro Pesa SMS Gateway`.
+
 When transferring by WhatsApp, send the actual `.apk` file as a document. If you
 downloaded a GitHub Actions artifact, unzip it first; the artifact download itself
 is a `.zip`, not the APK.
+
+One installed APK can serve Tradenova, Nexamarket, and future HTTPS backends.
+Add each backend in the app with its own base URL, device ID, API key, and
+device secret.

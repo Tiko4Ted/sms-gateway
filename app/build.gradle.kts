@@ -19,15 +19,15 @@ val hasReleaseSigning = listOf(
 ).all { !it.isNullOrBlank() }
 
 android {
-    namespace = "com.tradenova.smsgateway"
+    namespace = "com.europesa.smsgateway"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.tradenova.smsgateway"
+        applicationId = "com.europesa.smsgateway"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
