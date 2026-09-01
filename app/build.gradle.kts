@@ -39,6 +39,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.3"
@@ -75,6 +76,9 @@ dependencies {
 
     // Datastore for preferences
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // Coroutines - not guaranteed transitive from lifecycle/compose alone
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

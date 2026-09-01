@@ -37,6 +37,11 @@ data class DeviceHealth(
     val sim_present: Boolean
 )
 
+data class RegisterTokenRequest(
+    val device_id: String,
+    val fcm_token: String
+)
+
 interface BackendApi {
     @GET("/api/sms-gateway/pending")
     suspend fun getPendingJobs(
@@ -51,5 +56,16 @@ interface BackendApi {
         @Header("X-Signature") signature: String,
         @Header("X-Timestamp") timestamp: Long,
         @Body request: StatusUpdateRequest
+    ): Response<Unit>
+
+    // Registers this device's current FCM token with the backend so the
+    // server can address a push at this specific device rather than relying
+    // solely on the periodic fallback poll.
+    @POST("/api/sms-gateway/register-token")
+    suspend fun registerToken(
+        @Header("Authorization") auth: String,
+        @Header("X-Signature") signature: String,
+        @Header("X-Timestamp") timestamp: Long,
+        @Body request: RegisterTokenRequest
     ): Response<Unit>
 }

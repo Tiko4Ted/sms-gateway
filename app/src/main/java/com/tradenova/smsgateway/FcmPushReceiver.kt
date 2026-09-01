@@ -22,10 +22,14 @@ class FcmPushReceiver : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d("SmsGateway", "FCM Token: $token")
-        // We could send this token to the backend, but the spec says FCM data message
-        // triggers all gateways (topic) or specific gateway. Since device provisioning 
-        // implies the server needs the token to address this device specifically, 
-        // you would normally send it via an API call here.
+        Log.d("SmsGateway", "FCM Token refreshed, registering with backend")
+
+        // Without this call the backend has no way to address this specific
+        // device with a push, so it silently falls back to the slow
+        // periodic poll - this used to be a no-op TODO.
+        CoroutineScope(Dispatchers.IO).launch {
+            val manager = SmsGatewayManager(applicationContext)
+            manager.registerFcmToken(token)
+        }
     }
 }
