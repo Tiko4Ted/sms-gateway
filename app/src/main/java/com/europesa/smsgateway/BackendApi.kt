@@ -8,7 +8,8 @@ import retrofit2.http.POST
 
 data class PendingJobsResponse(
     val jobs: List<SmsJob>,
-    val poll_interval_hint_seconds: Int
+    val poll_interval_hint_seconds: Int,
+    val pending_count: Int? = null
 )
 
 data class SmsJob(

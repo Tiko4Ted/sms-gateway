@@ -21,6 +21,8 @@ import kotlin.text.Charsets.UTF_8
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -85,6 +87,7 @@ class SmsGatewayManager(private val context: Context) {
         const val EXTRA_BACKEND_JOB_ID = "backend_job_id"
         const val EXTRA_PART_INDEX = "part_index"
         private val requestCodeCounter = AtomicInteger(0)
+        private val syncLocks = ConcurrentHashMap<String, Mutex>()
     }
 
     suspend fun syncPendingJobs(connectionId: String? = null) {
@@ -96,7 +99,10 @@ class SmsGatewayManager(private val context: Context) {
             .filter { connectionId == null || it.id == connectionId || it.displayName.equals(connectionId, ignoreCase = true) }
 
         for (connection in connections) {
-            syncConnection(connection)
+            val lock = syncLocks.getOrPut(connection.id) { Mutex() }
+            lock.withLock {
+                syncConnection(connection)
+            }
         }
     }
 
@@ -124,6 +130,7 @@ class SmsGatewayManager(private val context: Context) {
         try {
             val timestamp = System.currentTimeMillis()
             val signature = generateSignature(timestamp.toString(), connection.deviceSecret())
+            refreshHealth(connection, api)
             val response = api.getPendingJobs(authHeader(connection), signature, timestamp)
             val now = Instant.now().toString()
 
@@ -136,12 +143,13 @@ class SmsGatewayManager(private val context: Context) {
                 return
             }
 
-            val jobs = response.body()?.jobs.orEmpty()
+            val body = response.body()
+            val jobs = body?.jobs.orEmpty()
             configManager.updateSyncStatus(
                 connection.id,
                 lastSyncTime = now,
                 lastError = null,
-                pendingCount = jobs.size
+                pendingCount = body?.pending_count ?: jobs.size
             )
 
             for (job in jobs) {
@@ -246,6 +254,21 @@ class SmsGatewayManager(private val context: Context) {
             api.reportStatus(authHeader(connection), signature, timestamp, request)
         } catch (e: Exception) {
             configManager.updateSyncStatus(connection.id, null, "Status report failed: ${sanitizedError(e)}")
+        }
+    }
+
+    private suspend fun refreshHealth(connection: BackendConnection, api: BackendApi) {
+        try {
+            val timestamp = System.currentTimeMillis()
+            val signature = generateSignature(timestamp.toString(), connection.deviceSecret())
+            val response = api.health(authHeader(connection), signature, timestamp)
+            val pendingCount = response.body()?.pending_count
+            if (response.isSuccessful && pendingCount != null) {
+                configManager.updateSyncStatus(connection.id, null, null, pendingCount)
+            }
+        } catch (e: Exception) {
+            // Health is useful for the UI, but /pending is the authoritative
+            // delivery path and must still run if health is unavailable.
         }
     }
 
