@@ -9,12 +9,17 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class GatewayService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var syncLoopJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -24,8 +29,10 @@ class GatewayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(1, notification())
         SmsWorker.enqueue(this)
-        serviceScope.launch {
-            SmsGatewayManager(applicationContext).syncPendingJobs()
+        if (syncLoopJob?.isActive != true) {
+            syncLoopJob = serviceScope.launch {
+                runActiveSyncLoop()
+            }
         }
         return START_STICKY
     }
@@ -36,6 +43,22 @@ class GatewayService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private suspend fun runActiveSyncLoop() {
+        val configManager = ConfigManager(applicationContext)
+        val manager = SmsGatewayManager(applicationContext)
+
+        while (serviceScope.isActive) {
+            val isGatewayActive = configManager.isActiveFlow.firstOrNull() ?: false
+            if (!isGatewayActive) {
+                stopSelf()
+                return
+            }
+
+            val nextPollSeconds = manager.syncPendingJobs()
+            delay(nextPollSeconds.coerceIn(5, 900) * 1000L)
+        }
+    }
 
     private fun notification(): Notification =
         NotificationCompat.Builder(this, "gateway_channel")

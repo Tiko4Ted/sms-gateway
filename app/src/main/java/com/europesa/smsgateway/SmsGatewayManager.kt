@@ -88,22 +88,29 @@ class SmsGatewayManager(private val context: Context) {
         const val EXTRA_PART_INDEX = "part_index"
         private val requestCodeCounter = AtomicInteger(0)
         private val syncLocks = ConcurrentHashMap<String, Mutex>()
+        const val DEFAULT_POLL_INTERVAL_SECONDS = 15
     }
 
-    suspend fun syncPendingJobs(connectionId: String? = null) {
+    suspend fun syncPendingJobs(connectionId: String? = null): Int {
         val isActive = configManager.isActiveFlow.firstOrNull() ?: false
-        if (!isActive) return
+        if (!isActive) return DEFAULT_POLL_INTERVAL_SECONDS
 
         val connections = configManager.connectionsFlow.firstOrNull().orEmpty()
             .filter { it.enabled && it.isProvisioned() }
             .filter { connectionId == null || it.id == connectionId || it.displayName.equals(connectionId, ignoreCase = true) }
 
+        if (connections.isEmpty()) return DEFAULT_POLL_INTERVAL_SECONDS
+
+        var nextPollSeconds = DEFAULT_POLL_INTERVAL_SECONDS
         for (connection in connections) {
             val lock = syncLocks.getOrPut(connection.id) { Mutex() }
-            lock.withLock {
+            val connectionPollSeconds = lock.withLock {
                 syncConnection(connection)
             }
+            nextPollSeconds = minOf(nextPollSeconds, connectionPollSeconds)
         }
+
+        return nextPollSeconds.coerceIn(5, 900)
     }
 
     suspend fun registerFcmToken(token: String) {
@@ -121,12 +128,12 @@ class SmsGatewayManager(private val context: Context) {
         }
     }
 
-    private suspend fun syncConnection(connection: BackendConnection) {
+    private suspend fun syncConnection(connection: BackendConnection): Int {
         configManager.validateBaseUrl(connection.baseUrl)?.let { error ->
             configManager.updateSyncStatus(connection.id, Instant.now().toString(), error)
-            return
+            return DEFAULT_POLL_INTERVAL_SECONDS
         }
-        val api = createApi(connection) ?: return
+        val api = createApi(connection) ?: return DEFAULT_POLL_INTERVAL_SECONDS
         try {
             val timestamp = System.currentTimeMillis()
             val signature = generateSignature(timestamp.toString(), connection.deviceSecret())
@@ -140,7 +147,7 @@ class SmsGatewayManager(private val context: Context) {
                     lastSyncTime = now,
                     lastError = "Pending fetch failed: HTTP ${response.code()}"
                 )
-                return
+                return DEFAULT_POLL_INTERVAL_SECONDS
             }
 
             val body = response.body()
@@ -155,12 +162,15 @@ class SmsGatewayManager(private val context: Context) {
             for (job in jobs) {
                 sendAndReport(connection, job)
             }
+
+            return (body?.poll_interval_hint_seconds ?: DEFAULT_POLL_INTERVAL_SECONDS).coerceIn(5, 900)
         } catch (e: Exception) {
             configManager.updateSyncStatus(
                 connection.id,
                 lastSyncTime = Instant.now().toString(),
                 lastError = sanitizedError(e)
             )
+            return DEFAULT_POLL_INTERVAL_SECONDS
         }
     }
 
