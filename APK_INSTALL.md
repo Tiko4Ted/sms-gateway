@@ -18,6 +18,12 @@ Then download the `sms-gateway-release-apk` artifact and install `app-release.ap
 
 Firebase must be configured for Android package `com.europesa.smsgateway`.
 The APK display name is `Euro Pesa SMS Gateway`.
+Use the Android `google-services.json` for the APK and store its full contents in
+the `GOOGLE_SERVICES_JSON` GitHub secret for CI builds.
+
+The Firebase Admin SDK service-account JSON is only for backend servers that send
+FCM wake-up pushes. Do not place it in the APK, do not commit it, and do not add
+it to GitHub Actions for the Android build.
 
 When transferring by WhatsApp, send the actual `.apk` file as a document. If you
 downloaded a GitHub Actions artifact, unzip it first; the artifact download itself
